@@ -1,0 +1,13 @@
+Registros publicados = COUNTROWS(ctps_emissoes)
+
+UFs com registros = DISTINCTCOUNT(ctps_emissoes[Sigla UF Órgão])
+
+Primeira via = CALCULATE([Registros publicados], ctps_emissoes[Tipo Protocolo] = "1ª Via")
+
+Segunda via = CALCULATE([Registros publicados], ctps_emissoes[Tipo Protocolo] = "2ª Via")
+
+Percentual primeira via = DIVIDE([Primeira via], [Registros publicados])
+
+Registros com perfil repetido =
+VAR Perfis = SUMMARIZE(ctps_emissoes, ctps_emissoes[Tipo Protocolo], ctps_emissoes[Tipo CTPS], ctps_emissoes[Nome Órgão], ctps_emissoes[Nome Município Órgão], ctps_emissoes[Sigla UF Órgão], ctps_emissoes[Sexo], ctps_emissoes[Nível Escolaridade], ctps_emissoes[Raça e Cor], ctps_emissoes[Estado Civil], "Linhas", COUNTROWS(ctps_emissoes))
+RETURN SUMX(FILTER(Perfis, [Linhas] > 1), [Linhas] - 1)
