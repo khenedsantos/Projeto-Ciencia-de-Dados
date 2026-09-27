@@ -14,7 +14,14 @@ def test_pipeline_with_local_official_sources():
     if not source_dir_value:
         pytest.skip("Defina CTPS_SOURCE_DIR para executar o teste de integração com as fontes baixadas.")
     source_dir = Path(source_dir_value)
-    manifest_path = source_dir / "download-manifest.json"
+    manifest_candidates = [
+        source_dir / "source_manifest.json",
+        source_dir.parent / "source_manifest.json",
+        source_dir / "download-manifest.json",
+    ]
+    manifest_path = next((path for path in manifest_candidates if path.exists()), None)
+    if manifest_path is None:
+        pytest.fail("Manifest local não encontrado ao lado das fontes oficiais.")
     validate_manifest(manifest_path, source_dir)
     output_dir = Path.cwd() / ".pytest-local" / uuid4().hex / "processed"
     try:
