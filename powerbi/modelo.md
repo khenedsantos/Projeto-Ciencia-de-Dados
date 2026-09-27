@@ -1,4 +1,6 @@
-# Modelo Power BI
+# Modelo Power BI (especificação)
+
+Este diretório ainda não contém um arquivo `.pbix`. Ele documenta o modelo proposto, a consulta Power Query, as medidas DAX e as páginas planejadas para implementação posterior no Power BI Desktop.
 
 `ctps_emissoes` tem uma linha para cada registro publicado nos arquivos oficiais. O modelo não afirma que cada linha represente uma pessoa única.
 

@@ -6,6 +6,7 @@ __pycache__/
 data/raw/*
 !data/raw/.gitkeep
 data/processed/*
+/.pytest-local/
 !data/processed/.gitkeep
 *.db
 *.sqlite

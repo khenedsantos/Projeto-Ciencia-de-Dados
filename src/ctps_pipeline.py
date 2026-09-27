@@ -25,6 +25,9 @@ EXPECTED_COLUMNS = [
     "Nome Município Nascimento", "Sigla UF Nascimento",
 ]
 DATE_COLUMNS = ["Data Protocolo", "Data CTPS Gerada", "Data Emissão", "Data Nascimento"]
+SCOPE_DATE_COLUMNS = ["Data Protocolo", "Data CTPS Gerada", "Data Emissão"]
+EXPECTED_PERIOD_START = pd.Period("2020-01", freq="M")
+EXPECTED_PERIOD_END = pd.Period("2022-12", freq="M")
 
 
 def date_column_name(column: str) -> str:
@@ -46,6 +49,26 @@ def download_sources(raw_dir: Path) -> list[dict[str, str | int]]:
         json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     return manifest
+
+
+def validate_manifest(manifest_path: Path, source_dir: Path) -> dict[str, dict[str, int | str]]:
+    """Validate the local files listed in a manifest without accessing the network."""
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    validation = {}
+    for entry in manifest:
+        path = source_dir / entry["file"]
+        if not path.exists():
+            raise FileNotFoundError(f"Fonte do manifest ausente: {path}")
+        content = path.read_bytes()
+        bytes_count = len(content)
+        sha256 = hashlib.sha256(content).hexdigest()
+        if bytes_count != entry["bytes"] or sha256 != entry["sha256"]:
+            raise ValueError(
+                f"Checksum divergente para {path.name}: "
+                f"bytes={bytes_count}/{entry['bytes']}, sha256={sha256}/{entry['sha256']}"
+            )
+        validation[entry["file"]] = {"bytes": bytes_count, "sha256": sha256}
+    return validation
 
 
 def load_sources(source_dir: Path) -> pd.DataFrame:
@@ -85,15 +108,49 @@ def transform(frame: pd.DataFrame) -> pd.DataFrame:
     return result
 
 
+def out_of_range_mask(clean: pd.DataFrame, column: str = "Data CTPS Gerada") -> pd.Series:
+    """Return valid parsed dates outside the documented analysis period."""
+    parsed = clean[date_column_name(column)]
+    periods = parsed.dt.to_period("M")
+    return parsed.notna() & ((periods < EXPECTED_PERIOD_START) | (periods > EXPECTED_PERIOD_END))
+
+
+def _scope_details(clean: pd.DataFrame) -> dict[str, dict[str, object]]:
+    details = {}
+    for column in SCOPE_DATE_COLUMNS:
+        mask = out_of_range_mask(clean, column)
+        periods = clean.loc[mask, date_column_name(column)].dt.to_period("M").astype("string")
+        details[column] = {
+            "records": int(mask.sum()),
+            "periods": {str(key): int(value) for key, value in periods.value_counts().sort_index().items()},
+            "sources": {str(key): int(value) for key, value in clean.loc[mask, "arquivo_fonte"].value_counts().items()},
+        }
+    return details
+
+
 def quality_report(raw: pd.DataFrame, clean: pd.DataFrame) -> dict:
+    scope_details = _scope_details(clean)
+    emission_out_of_range = clean.loc[
+        out_of_range_mask(clean),
+        [
+            "arquivo_fonte", "Tipo Protocolo", "Data Protocolo", "Tipo CTPS",
+            "Data CTPS Gerada", "Nome Órgão", "Nome Município Órgão",
+            "Sigla UF Órgão", "Data Emissão", "Data Nascimento",
+            "Sigla UF Nascimento",
+        ],
+    ].to_dict(orient="records")
     return {
         "input_rows": int(len(raw)), "output_rows": int(len(clean)),
-        "input_columns": int(len(raw.columns) - 1), "output_columns": int(len(clean.columns)),
+        "input_columns": int(len(set(raw.columns) - {"arquivo_fonte"})), "output_columns": int(len(clean.columns)),
         "rows_removed": int(len(raw) - len(clean)),
         "duplicate_full_rows": int(raw.duplicated(subset=EXPECTED_COLUMNS).sum()),
         "empty_values_by_column": {column: int(clean[column].eq("").sum()) for column in EXPECTED_COLUMNS},
         "invalid_dates_by_column": {column: int(clean[date_column_name(column)].isna().sum()) for column in DATE_COLUMNS},
         "source_rows": {str(key): int(value) for key, value in clean["arquivo_fonte"].value_counts().items()},
+        "analysis_period": {"start": str(EXPECTED_PERIOD_START), "end": str(EXPECTED_PERIOD_END)},
+        "out_of_range_by_date_column": scope_details,
+        "out_of_range_emission_records": scope_details["Data CTPS Gerada"]["records"],
+        "out_of_range_emission_details": emission_out_of_range,
     }
 
 
@@ -108,6 +165,8 @@ def make_outputs(clean: pd.DataFrame, output_dir: Path) -> None:
     monthly.to_csv(tables / "emissoes_por_mes.csv", index=False)
     by_state.to_csv(tables / "emissoes_por_uf.csv", index=False)
     by_protocol.to_csv(tables / "emissoes_por_protocolo.csv", index=False)
+    out_of_scope = clean.loc[out_of_range_mask(clean), ["arquivo_fonte"] + EXPECTED_COLUMNS].copy()
+    out_of_scope.to_csv(tables / "emissoes_fora_intervalo.csv", index=False)
     chart_specs = [
         (monthly, "emissoes_por_mes.png", "Registros por mês de geração da CTPS", "periodo_emissao"),
         (by_state.head(10), "top_10_ufs.png", "10 UFs com mais registros", "Sigla UF Órgão"),
@@ -122,17 +181,37 @@ def make_outputs(clean: pd.DataFrame, output_dir: Path) -> None:
         plt.tight_layout()
         plt.savefig(figures / filename, dpi=160)
         plt.close()
-    lines = ["# Observações calculadas", "", "Os números abaixo foram gerados pelo pipeline; não são metas nem impactos causais.", ""]
-    lines.append(f"- Registros preservados: **{len(clean):,}**.")
+    lines = ["# Observações calculadas", "", "Os números abaixo foram gerados pelo pipeline; são descrições do conjunto publicado e não evidenciam causalidade ou impacto.", ""]
+    total = len(clean)
+    lines.append(f"- Registros preservados: **{total:,}**.")
     lines.append(f"- Registros com o mesmo perfil em todas as colunas de negócio: **{int(clean.duplicated(subset=EXPECTED_COLUMNS).sum()):,}**; eles foram preservados por falta de identificador de atendimento.")
     if not by_state.empty:
-        lines.append(f"- UF com maior volume no conjunto: **{by_state.iloc[0]['Sigla UF Órgão']}**, com **{int(by_state.iloc[0]['registros']):,}** registros.")
+        top_uf = by_state.iloc[0]
+        top_five_share = by_state.head(5)["registros"].sum() / total
+        lines.append(f"- UF com maior volume no conjunto: **{top_uf['Sigla UF Órgão']}**, com **{int(top_uf['registros']):,}** registros ({int(top_uf['registros']) / total:.1%} do total).")
+        lines.append(f"- As cinco UFs com mais registros concentram **{int(by_state.head(5)['registros'].sum()):,}** linhas ({top_five_share:.1%} do total). Isso descreve a distribuição da publicação, sem indicar causa para a concentração.")
     if not by_protocol.empty:
         lines.append(f"- Tipo de protocolo mais frequente: **{by_protocol.iloc[0]['Tipo Protocolo']}**, com **{int(by_protocol.iloc[0]['registros']):,}** registros.")
+        for protocol in ["1ª Via", "2ª Via"]:
+            match = by_protocol.loc[by_protocol["Tipo Protocolo"].eq(protocol), "registros"]
+            if not match.empty:
+                count = int(match.iloc[0])
+                lines.append(f"- **{protocol}** representa **{count:,}** registros ({count / total:.1%}).")
+    monthly_periods = pd.to_datetime(monthly["periodo_emissao"], format="%Y-%m", errors="coerce").dt.to_period("M")
+    in_scope_monthly = monthly.loc[monthly_periods.between(EXPECTED_PERIOD_START, EXPECTED_PERIOD_END)].copy()
+    if not in_scope_monthly.empty:
+        first = in_scope_monthly.iloc[0]
+        last = in_scope_monthly.iloc[-1]
+        peak = in_scope_monthly.loc[in_scope_monthly["registros"].idxmax()]
+        lines.append(f"- No período de análise, o volume observado foi de **{int(first['registros']):,}** em **{first['periodo_emissao']}** e **{int(last['registros']):,}** em **{last['periodo_emissao']}**; o pico mensal foi **{peak['periodo_emissao']}**, com **{int(peak['registros']):,}** registros.")
+    if not out_of_scope.empty:
+        lines.append(f"- Há **{len(out_of_scope):,}** registro fora do intervalo de geração 2020-01 a 2022-12: `Data CTPS Gerada = 2023-01`, originado de `dados_ctps_2022.xlsx`. Ele foi preservado e está detalhado em `reports/tables/emissoes_fora_intervalo.csv`.")
+    lines.extend(["", "## Limitações", "", "As variações mensais e regionais são descritivas dos registros administrativos publicados. Não permitem inferir emprego, tamanho do mercado de trabalho, demanda causal ou desempenho de atendimento. `Data Protocolo` tem 15.017 registros anteriores a 2020, enquanto `Data CTPS Gerada` tem um registro em 2023-01; esses valores são preservados e reportados separadamente."])
     (reports / "insights.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def write_sqlite(clean: pd.DataFrame, output_dir: Path) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(output_dir / "ctps_emissoes.sqlite") as connection:
         clean.to_sql("ctps_emissoes", connection, if_exists="replace", index=False)
 

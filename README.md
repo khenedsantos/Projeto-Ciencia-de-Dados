@@ -14,6 +14,8 @@ Fonte oficial: [página de estatísticas da CTPS do MTE](https://www.gov.br/trab
 
 Os arquivos brutos não são versionados. O download é reproduzível e os checksums ficam registrados em `data/source_manifest.json`. O pipeline preserva as 485.430 linhas publicadas nos cinco arquivos. Linhas com o mesmo conjunto de atributos não são removidas automaticamente: sem identificador de atendimento não é possível afirmar que sejam duplicatas indevidas.
 
+O escopo temporal da série principal usa `Data CTPS Gerada` entre 2020-01 e 2022-12. A fonte `dados_ctps_2022.xlsx` contém uma linha com `Data CTPS Gerada = 2023-01` (linha 552 no arquivo oficial); ela foi preservada, sinalizada no relatório de qualidade e incluída em `reports/tables/emissoes_fora_intervalo.csv`. A linha registra protocolo e emissão em 2022-12, protocolo `2ª Via`, órgão `SRTE/AC - Rio Branco` e UF `AC`. Além disso, 15.017 registros têm `Data Protocolo` anterior a 2020, informação histórica do atendimento que não é usada para recortar a série de geração.
+
 ## Estrutura
 
 ```text
@@ -25,7 +27,8 @@ powerbi/                  # Power Query, medidas DAX e modelo
 scripts/download_source.py
 sql/analises.sql
 src/ctps_pipeline.py
-tests/test_pipeline.py
+tests/test_pipeline.py       # testes unitários
+tests/test_integration.py    # teste opcional com fontes locais
 ```
 
 ## Como executar
@@ -47,7 +50,7 @@ O pipeline gera `data/processed/ctps_emissoes.csv`, `data/processed/ctps_emissoe
 
 ## SQL e Power BI
 
-As consultas em `sql/analises.sql` usam SQLite e partem da tabela `ctps_emissoes`. O diretório `powerbi/` documenta a importação do CSV, um modelo dimensional simples e medidas DAX explícitas. Não há `.pbix` porque o Power BI Desktop não está disponível neste ambiente; o modelo está documentado para criação no Desktop.
+As consultas em `sql/analises.sql` usam SQLite e partem da tabela `ctps_emissoes`. O diretório `powerbi/` contém a especificação do modelo proposto, o script de Power Query, as medidas DAX e a especificação das páginas do dashboard. Ainda não existe um arquivo `.pbix`: o dashboard real será montado posteriormente no Power BI Desktop. Portanto, esses arquivos descrevem uma entrega planejada e reproduzível, não um painel já publicado.
 
 ## Interpretação
 
