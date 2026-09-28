@@ -42,8 +42,9 @@ def test_transform_creates_month_and_preserves_rows():
     assert clean["registro_id"].notna().all()
 
 
-def test_quality_report_does_not_delete_equal_profiles():
+def test_quality_report_does_not_delete_repeated_records():
     raw = with_source(sample_frame())
+    raw.loc[0, "Sexo"] = " valor "
     report = pipeline.quality_report(raw, pipeline.transform(raw))
     assert report["rows_removed"] == 0
     assert report["duplicate_full_rows"] == 4
@@ -99,6 +100,7 @@ def test_make_outputs_generates_aggregations_figures_and_insights(workdir):
     raw.loc[2, "Tipo Protocolo"] = "2ª Via"
     raw.loc[0, "Sigla UF Órgão"] = "MG"
     raw.loc[1, "Sigla UF Órgão"] = "SP"
+    raw.loc[2, "Data CTPS Gerada"] = "2023-01"
     clean = pipeline.transform(raw)
     output_dir = workdir / "data" / "processed"
     pipeline.make_outputs(clean, output_dir)
@@ -108,6 +110,13 @@ def test_make_outputs_generates_aggregations_figures_and_insights(workdir):
     assert (reports / "tables" / "emissoes_por_protocolo.csv").exists()
     assert (reports / "tables" / "emissoes_fora_intervalo.csv").exists()
     assert (reports / "figures" / "emissoes_por_mes.png").exists()
+    assert (reports / "figures" / "top_10_ufs.png").exists()
+    for slug in ["mes", "uf", "protocolo", *pipeline.PROFILE_COLUMNS]:
+        table = pd.read_csv(reports / "tables" / f"emissoes_por_{slug}.csv")
+        assert table["registros"].sum() == 2
+    exceptions = pd.read_csv(reports / "tables" / "emissoes_fora_intervalo.csv")
+    assert len(exceptions) == 1
+    assert len(clean) == 3
     assert "Registros preservados" in (reports / "insights.md").read_text(encoding="utf-8")
 
 
@@ -156,3 +165,45 @@ def test_sql_repetitions_count_excess_rows_and_include_dates(rows, expected):
         raw.to_sql("ctps_emissoes", connection, index=False)
         count = connection.execute(query).fetchone()[0]
     assert count == raw.duplicated(subset=EXPECTED_COLUMNS).sum() == expected
+
+
+def test_schema_is_validated_per_source(monkeypatch, workdir):
+    monkeypatch.setattr(pipeline, "SOURCE_FILES", {"a.xlsx": "a", "b.xlsx": "b"})
+    for name in pipeline.SOURCE_FILES:
+        (workdir / name).touch()
+    def read_source(path, **kwargs):
+        frame = sample_frame(1)
+        return frame.drop(columns=["Sexo"]) if path.name == "b.xlsx" else frame
+    monkeypatch.setattr(pipeline.pd, "read_excel", read_source)
+    with pytest.raises(ValueError, match="b.xlsx: Colunas obrigatórias"):
+        pipeline.load_sources(workdir)
+
+
+def test_scope_boundaries_invalid_dates_and_sql_agree():
+    raw = with_source(sample_frame(5))
+    raw["Data CTPS Gerada"] = ["2019-12", "2020-01", "2022-12", "2023-01", "inválida"]
+    clean = pipeline.transform(raw)
+    assert len(clean) == 5
+    assert pipeline.analysis_scope(clean)["periodo_emissao"].tolist() == ["2020-01", "2022-12"]
+    sql = (Path(__file__).parents[1] / "sql/analises.sql").read_text(encoding="utf-8")
+    with sqlite3.connect(":memory:") as connection:
+        clean.to_sql("ctps_emissoes", connection, index=False)
+        connection.execute(sql.split(";")[0])
+        assert connection.execute("SELECT COUNT(*) FROM ctps_2020_2022").fetchone()[0] == 2
+
+
+def test_nonstandard_uf_is_reported_without_replacement():
+    raw = with_source(sample_frame(3))
+    raw["Sigla UF Órgão"] = ["MG", "IG", "IG"]
+    clean = pipeline.transform(raw)
+    report = pipeline.quality_report(raw, clean)
+    assert clean["Sigla UF Órgão"].tolist() == ["MG", "IG", "IG"]
+    assert report["nonstandard_uf_details"][0]["Sigla UF Órgão"] == "IG"
+    assert report["nonstandard_uf_details"][0]["registros"] == 2
+
+
+def test_manifest_requires_all_expected_files_and_urls(workdir):
+    manifest = workdir / "source_manifest.json"
+    manifest.write_text("[]", encoding="utf-8")
+    with pytest.raises(ValueError, match="arquivos e URLs"):
+        pipeline.validate_manifest(manifest, workdir, {"source.xlsx": "https://example.invalid/source.xlsx"})
