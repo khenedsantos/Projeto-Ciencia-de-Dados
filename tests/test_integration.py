@@ -23,10 +23,10 @@ def test_pipeline_with_local_official_sources():
     if manifest_path is None:
         pytest.fail("Manifest local não encontrado ao lado das fontes oficiais.")
     validate_manifest(manifest_path, source_dir)
-    output_dir = Path.cwd() / ".pytest-local" / uuid4().hex / "processed"
+    output_dir = Path.cwd() / ".pytest-local" / uuid4().hex / "data" / "processed"
     try:
         report = run(source_dir, output_dir)
         assert report["input_rows"] == report["output_rows"]
         assert report["out_of_range_emission_records"] == 1
     finally:
-        shutil.rmtree(output_dir.parent, ignore_errors=True)
+        shutil.rmtree(output_dir.parent.parent, ignore_errors=True)

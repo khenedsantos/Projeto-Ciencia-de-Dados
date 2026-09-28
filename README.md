@@ -1,59 +1,100 @@
 # Emissões de CTPS no Brasil — 2020 a 2022
 
-Análise exploratória das emissões de Carteira de Trabalho e Previdência Social (CTPS) disponibilizadas pelo Ministério do Trabalho e Emprego (MTE).
+Análise descritiva e reproduzível dos registros públicos de emissão de Carteira de Trabalho e Previdência Social (CTPS), publicada pelo Ministério do Trabalho e Emprego (MTE).
 
-O projeto foi reconstruído para responder perguntas descritivas sobre volume de emissões, distribuição regional, tipo de protocolo e perfil informado no atendimento. O foco é demonstrar um fluxo reproduzível com Python, pandas, SQL e Power BI.
+## Visão geral
 
-## Contexto e limites
+O projeto examina como os registros publicados se distribuem por mês, UF e tipo de protocolo. O fluxo permite conferir a qualidade dos dados e acompanhar a composição do volume registrado.
 
-As bases públicas registram atendimentos e emissões de CTPS física em arquivos mensais e anuais do MTE. Elas permitem observar a distribuição dos registros publicados na fonte, mas não representam diretamente contratações, desemprego ou toda a força de trabalho brasileira.
+- **Fonte:** [estatísticas oficiais da CTPS](https://www.gov.br/trabalho-e-emprego/pt-br/servicos/trabalhador/carteira-de-trabalho/estatisticas)
+- **Período principal:** `Data CTPS Gerada` entre `2020-01` e `2022-12`
+- **Registros preservados:** 485.430, sem remoção de linhas repetidas
+- **Tecnologias:** Python, pandas, matplotlib, SQLite, SQL e especificação de Power BI
 
-As perguntas do projeto são: como os registros se distribuem por mês de geração; quais estados e órgãos concentram mais registros; qual é a composição por primeira e segunda via; e como aparecem sexo, escolaridade e cidadania.
+## Principais resultados
 
-Fonte oficial: [página de estatísticas da CTPS do MTE](https://www.gov.br/trabalho-e-emprego/pt-br/servicos/trabalhador/carteira-de-trabalho/estatisticas).
+Os valores abaixo são calculados pelo pipeline e podem ser conferidos em [`reports/insights.md`](reports/insights.md) e nas tabelas geradas. Totais e participações incluem todos os arquivos, inclusive a ocorrência de janeiro de 2023.
 
-Os arquivos brutos não são versionados. O download é reproduzível e os checksums ficam registrados em `data/source_manifest.json`. O pipeline preserva as 485.430 linhas publicadas nos cinco arquivos. Linhas com o mesmo conjunto de atributos não são removidas automaticamente: sem identificador de atendimento não é possível afirmar que sejam duplicatas indevidas.
+- Foram preservados **485.430 registros** dos cinco arquivos oficiais.
+- **1ª Via:** 351.527 registros (**72,4%**); **2ª Via:** 133.903 (**27,6%**).
+- **MG** foi a UF com maior volume, com 81.791 registros (**16,8%**); as cinco UFs líderes somam 299.077 (**61,6%**).
+- O maior volume mensal ocorreu em **2020-01**, com 227.013 registros; em **2022-12** foram observados 62.
+- Existe **1 registro com `Data CTPS Gerada = 2023-01`** na fonte `dados_ctps_2022.xlsx`. Ele foi preservado e sinalizado como fora do período principal.
 
-O escopo temporal da série principal usa `Data CTPS Gerada` entre 2020-01 e 2022-12. A fonte `dados_ctps_2022.xlsx` contém uma linha com `Data CTPS Gerada = 2023-01` (linha 552 no arquivo oficial); ela foi preservada, sinalizada no relatório de qualidade e incluída em `reports/tables/emissoes_fora_intervalo.csv`. A linha registra protocolo e emissão em 2022-12, protocolo `2ª Via`, órgão `SRTE/AC - Rio Branco` e UF `AC`. Além disso, 15.017 registros têm `Data Protocolo` anterior a 2020, informação histórica do atendimento que não é usada para recortar a série de geração.
+## Visualizações
 
-## Estrutura
+### Evolução mensal
+
+![Registros por mês de geração da CTPS](reports/figures/emissoes_por_mes.png)
+
+### Distribuição por UF
+
+![Dez UFs com mais registros](reports/figures/top_10_ufs.png)
+
+## Pipeline
 
 ```text
-data/raw/                 # arquivos baixados; ignorados pelo Git
-data/processed/           # CSV, SQLite e relatório de qualidade gerados
-reports/figures/          # gráficos gerados
-reports/tables/           # tabelas agregadas geradas
-powerbi/                  # Power Query, medidas DAX e modelo
-scripts/download_source.py
-sql/analises.sql
-src/ctps_pipeline.py
-tests/test_pipeline.py       # testes unitários
-tests/test_integration.py    # teste opcional com fontes locais
+Fonte oficial
+    ↓
+Download e manifest SHA-256
+    ↓
+Validação de arquivos e esquema
+    ↓
+Transformação com pandas
+    ↓
+CSV processado e SQLite
+    ↓
+Consultas SQL e agregações
+    ↓
+Tabelas, gráficos e insights
+    ↓
+Especificação para Power BI
 ```
 
-## Como executar
+O código principal está em [`src/ctps_pipeline.py`](src/ctps_pipeline.py). As consultas analíticas estão em [`sql/analises.sql`](sql/analises.sql). O relatório de qualidade fica em `data/processed/quality_report.json` após a execução.
 
-Use Python 3.11 ou superior.
+## Decisões metodológicas
+
+- **Registros repetidos:** linhas com o mesmo conjunto de atributos de negócio foram preservadas. A fonte não fornece um identificador de atendimento ou de pessoa que permita classificá-las como duplicatas indevidas.
+- **Registro `2023-01`:** o valor existe em `dados_ctps_2022.xlsx`, com protocolo e emissão em `2022-12`. Foi mantido para não alterar a fonte silenciosamente e está detalhado em [`reports/tables/emissoes_fora_intervalo.csv`](reports/tables/emissoes_fora_intervalo.csv).
+- **Datas de protocolo:** 15.017 protocolos são anteriores a 2020. Eles representam histórico do atendimento e não são usados para recortar a série principal, baseada em `Data CTPS Gerada`.
+- **Interpretação:** emissão de CTPS é um registro administrativo. Não mede contratação, desemprego, pessoas únicas ou causalidade econômica.
+- **Arquivos brutos:** não são versionados por tamanho e por serem obtidos de fonte pública; o download é reproduzível pelo manifest e seus hashes.
+
+## Tecnologias
+
+Python 3.11+, pandas, matplotlib, openpyxl, SQLite, SQL e Power BI (Power Query e DAX documentados).
+
+## Como reproduzir
 
 ```bash
 python -m venv .venv
-# Windows PowerShell
+```
+
+No Windows PowerShell:
+
+```powershell
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-
 python scripts/download_source.py
 python -m src.ctps_pipeline --source-dir data/raw --output-dir data/processed
 pytest
+$env:CTPS_SOURCE_DIR = "data/raw"
+pytest -m integration
 ```
 
-O pipeline gera `data/processed/ctps_emissoes.csv`, `data/processed/ctps_emissoes.sqlite`, `data/processed/quality_report.json`, tabelas agregadas, gráficos e `reports/insights.md`.
+O pipeline gera o CSV e SQLite processados, `quality_report.json`, tabelas agregadas, gráficos e `reports/insights.md`. Os testes unitários ficam em `tests/test_pipeline.py`; o teste de integração usa fontes locais quando `CTPS_SOURCE_DIR` está definido.
 
 ## SQL e Power BI
 
-As consultas em `sql/analises.sql` usam SQLite e partem da tabela `ctps_emissoes`. O diretório `powerbi/` contém a especificação do modelo proposto, o script de Power Query, as medidas DAX e a especificação das páginas do dashboard. Ainda não existe um arquivo `.pbix`: o dashboard real será montado posteriormente no Power BI Desktop. Portanto, esses arquivos descrevem uma entrega planejada e reproduzível, não um painel já publicado.
+[`sql/analises.sql`](sql/analises.sql) consulta a tabela `ctps_emissoes` no SQLite. Em [`powerbi/`](powerbi/) estão:
 
-## Interpretação
+- [`PowerQuery.m`](powerbi/PowerQuery.m), para importar e tipar o CSV;
+- [`medidas.dax`](powerbi/medidas.dax), com medidas explícitas;
+- [`modelo.md`](powerbi/modelo.md) e [`dashboard_spec.md`](powerbi/dashboard_spec.md), com o modelo e as páginas propostas.
 
-As conclusões descrevem os registros publicados pelo MTE. A base não contém um identificador de pessoa ou de atendimento que permita medir pessoas únicas, reincidência, conversão em emprego ou causalidade. Datas são mensais; há categorias históricas e mudanças de preenchimento entre arquivos. Recomendações devem ser apresentadas como uso potencial para acompanhamento da demanda registrada, sem alegar economia de recursos ou melhoria de empregabilidade.
+Ainda não existe um arquivo `.pbix`. O dashboard real será construído posteriormente no Power BI Desktop; a documentação atual é uma especificação de implementação, não uma entrega concluída.
 
-Status: pipeline reconstruído e validado com os arquivos oficiais disponíveis na página do MTE em 27/09/2026.
+## Limitações
+
+As datas têm granularidade mensal e os arquivos podem ter diferenças históricas de preenchimento. Não há identificador de pessoa ou atendimento, portanto não é possível medir pessoas únicas ou reincidência. As comparações descrevem os registros publicados pelo MTE e não devem ser usadas como estimativa de emprego, desemprego, tamanho de mercado ou impacto de política pública.

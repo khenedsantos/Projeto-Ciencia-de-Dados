@@ -7,8 +7,13 @@ import sqlite3
 import urllib.request
 from pathlib import Path
 
+import matplotlib
+
+# Os gráficos são exportados para arquivos, sem dependência de interface gráfica.
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
+from matplotlib.ticker import FuncFormatter
 
 SOURCE_FILES = {
     "dados_ctps_2020-jan.xlsx": "https://www.gov.br/trabalho-e-emprego/pt-br/servicos/trabalhador/carteira-de-trabalho/ctps-arquivos/dados_ctps_2020-jan.xlsx",
@@ -167,46 +172,87 @@ def make_outputs(clean: pd.DataFrame, output_dir: Path) -> None:
     by_protocol.to_csv(tables / "emissoes_por_protocolo.csv", index=False)
     out_of_scope = clean.loc[out_of_range_mask(clean), ["arquivo_fonte"] + EXPECTED_COLUMNS].copy()
     out_of_scope.to_csv(tables / "emissoes_fora_intervalo.csv", index=False)
-    chart_specs = [
-        (monthly, "emissoes_por_mes.png", "Registros por mês de geração da CTPS", "periodo_emissao"),
-        (by_state.head(10), "top_10_ufs.png", "10 UFs com mais registros", "Sigla UF Órgão"),
-    ]
-    for data, filename, title, x in chart_specs:
-        plt.figure(figsize=(11, 5))
-        plt.bar(data[x].astype(str), data["registros"])
-        plt.title(title)
-        plt.xlabel(x)
-        plt.ylabel("Registros publicados")
-        plt.xticks(rotation=45, ha="right")
-        plt.tight_layout()
-        plt.savefig(figures / filename, dpi=160)
-        plt.close()
-    lines = ["# Observações calculadas", "", "Os números abaixo foram gerados pelo pipeline; são descrições do conjunto publicado e não evidenciam causalidade ou impacto.", ""]
+    number_formatter = FuncFormatter(lambda value, _: f"{int(value):,}".replace(",", "."))
+    plt.style.use("default")
+
+    monthly_periods = pd.to_datetime(monthly["periodo_emissao"], format="%Y-%m", errors="coerce").dt.to_period("M")
+    monthly_x = list(range(len(monthly)))
+    fig, ax = plt.subplots(figsize=(12, 5.5))
+    ax.plot(monthly_x, monthly["registros"], color="#2563eb", marker="o", linewidth=2, markersize=4)
+    out_of_scope_months = ~monthly_periods.between(EXPECTED_PERIOD_START, EXPECTED_PERIOD_END)
+    if out_of_scope_months.any():
+        ax.scatter(
+            [monthly_x[index] for index, value in enumerate(out_of_scope_months) if value],
+            monthly.loc[out_of_scope_months, "registros"],
+            color="#dc2626", zorder=3, label="Fora do período principal",
+        )
+    tick_positions = list(range(0, len(monthly), 3))
+    if monthly_x and monthly_x[-1] not in tick_positions:
+        tick_positions.append(monthly_x[-1])
+    ax.set_xticks(tick_positions)
+    ax.set_xticklabels(monthly.iloc[tick_positions]["periodo_emissao"], rotation=45, ha="right")
+    ax.set_title("Registros por mês de geração da CTPS")
+    ax.set_xlabel("Período de geração")
+    ax.set_ylabel("Registros publicados")
+    ax.set_ylim(bottom=0)
+    ax.yaxis.set_major_formatter(number_formatter)
+    ax.grid(axis="y", alpha=0.25)
+    ax.grid(axis="x", visible=False)
+    if out_of_scope_months.any():
+        ax.legend(frameon=False, loc="upper right")
+    fig.tight_layout()
+    fig.savefig(figures / "emissoes_por_mes.png", dpi=180)
+    plt.close(fig)
+
+    top_states = by_state.head(10).sort_values("registros")
+    fig, ax = plt.subplots(figsize=(10, 5.5))
+    bars = ax.barh(top_states["Sigla UF Órgão"], top_states["registros"], color="#2563eb")
+    ax.bar_label(bars, labels=[f"{int(value):,}".replace(",", ".") for value in top_states["registros"]], padding=4, fontsize=8)
+    ax.set_title("10 UFs com mais registros")
+    ax.set_xlabel("Registros publicados")
+    ax.set_ylabel("UF do órgão")
+    ax.xaxis.set_major_formatter(number_formatter)
+    ax.set_xlim(0, top_states["registros"].max() * 1.18 if not top_states.empty else 1)
+    ax.grid(axis="x", alpha=0.25)
+    ax.grid(axis="y", visible=False)
+    fig.tight_layout()
+    fig.savefig(figures / "top_10_ufs.png", dpi=180)
+    plt.close(fig)
+
+    lines = ["# Observações calculadas", "", "Os números abaixo foram gerados pelo pipeline. São achados descritivos do conjunto publicado; não evidenciam causalidade ou impacto.", "", "## Achados", ""]
     total = len(clean)
     lines.append(f"- Registros preservados: **{total:,}**.")
     lines.append(f"- Registros com o mesmo perfil em todas as colunas de negócio: **{int(clean.duplicated(subset=EXPECTED_COLUMNS).sum()):,}**; eles foram preservados por falta de identificador de atendimento.")
     if not by_state.empty:
         top_uf = by_state.iloc[0]
         top_five_share = by_state.head(5)["registros"].sum() / total
-        lines.append(f"- UF com maior volume no conjunto: **{top_uf['Sigla UF Órgão']}**, com **{int(top_uf['registros']):,}** registros ({int(top_uf['registros']) / total:.1%} do total).")
-        lines.append(f"- As cinco UFs com mais registros concentram **{int(by_state.head(5)['registros'].sum()):,}** linhas ({top_five_share:.1%} do total). Isso descreve a distribuição da publicação, sem indicar causa para a concentração.")
+        lines.append(f"- **Distribuição regional:** {top_uf['Sigla UF Órgão']} concentra **{int(top_uf['registros']):,}** registros ({int(top_uf['registros']) / total:.1%} do total). As cinco UFs com mais registros somam **{int(by_state.head(5)['registros'].sum()):,}** linhas ({top_five_share:.1%}).")
     if not by_protocol.empty:
-        lines.append(f"- Tipo de protocolo mais frequente: **{by_protocol.iloc[0]['Tipo Protocolo']}**, com **{int(by_protocol.iloc[0]['registros']):,}** registros.")
+        lines.append(f"- **Tipo de protocolo:** {by_protocol.iloc[0]['Tipo Protocolo']} é o tipo mais frequente, com **{int(by_protocol.iloc[0]['registros']):,}** registros.")
         for protocol in ["1ª Via", "2ª Via"]:
             match = by_protocol.loc[by_protocol["Tipo Protocolo"].eq(protocol), "registros"]
             if not match.empty:
                 count = int(match.iloc[0])
-                lines.append(f"- **{protocol}** representa **{count:,}** registros ({count / total:.1%}).")
-    monthly_periods = pd.to_datetime(monthly["periodo_emissao"], format="%Y-%m", errors="coerce").dt.to_period("M")
+                lines.append(f"  - {protocol}: **{count:,}** registros ({count / total:.1%}).")
     in_scope_monthly = monthly.loc[monthly_periods.between(EXPECTED_PERIOD_START, EXPECTED_PERIOD_END)].copy()
     if not in_scope_monthly.empty:
         first = in_scope_monthly.iloc[0]
         last = in_scope_monthly.iloc[-1]
         peak = in_scope_monthly.loc[in_scope_monthly["registros"].idxmax()]
-        lines.append(f"- No período de análise, o volume observado foi de **{int(first['registros']):,}** em **{first['periodo_emissao']}** e **{int(last['registros']):,}** em **{last['periodo_emissao']}**; o pico mensal foi **{peak['periodo_emissao']}**, com **{int(peak['registros']):,}** registros.")
+        lines.append(f"- **Evolução observada:** o volume foi de **{int(first['registros']):,}** registros em **{first['periodo_emissao']}** e **{int(last['registros']):,}** em **{last['periodo_emissao']}**; o pico mensal foi **{peak['periodo_emissao']}**, com **{int(peak['registros']):,}** registros.")
+        yearly = in_scope_monthly.groupby(in_scope_monthly["periodo_emissao"].str[:4])["registros"].sum()
+        lines.append("- **Comparação anual por mês de geração:** " + "; ".join(
+            f"{year}: **{int(count):,}** registros" for year, count in yearly.items()
+        ) + ". O registro fora do período principal não entra nesta comparação.")
+        if len(yearly) > 1 and yearly.iloc[0]:
+            change = (yearly.iloc[-1] / yearly.iloc[0] - 1) * 100
+            lines.append(f"- A variação de volume entre {yearly.index[0]} e {yearly.index[-1]} foi de **{change:.2f}%**. É uma comparação dos registros publicados, sem atribuição de causa.")
     if not out_of_scope.empty:
-        lines.append(f"- Há **{len(out_of_scope):,}** registro fora do intervalo de geração 2020-01 a 2022-12: `Data CTPS Gerada = 2023-01`, originado de `dados_ctps_2022.xlsx`. Ele foi preservado e está detalhado em `reports/tables/emissoes_fora_intervalo.csv`.")
-    lines.extend(["", "## Limitações", "", "As variações mensais e regionais são descritivas dos registros administrativos publicados. Não permitem inferir emprego, tamanho do mercado de trabalho, demanda causal ou desempenho de atendimento. `Data Protocolo` tem 15.017 registros anteriores a 2020, enquanto `Data CTPS Gerada` tem um registro em 2023-01; esses valores são preservados e reportados separadamente."])
+        occurrences = out_of_scope.groupby(["Data CTPS Gerada", "arquivo_fonte"]).size()
+        detail = "; ".join(f"`{period}` em `{source}`: {count}" for (period, source), count in occurrences.items())
+        lines.append(f"- **Qualidade de escopo:** **{len(out_of_scope):,}** registro(s) fora de {EXPECTED_PERIOD_START} a {EXPECTED_PERIOD_END}: {detail}. Preservados em [emissoes_fora_intervalo.csv](tables/emissoes_fora_intervalo.csv).")
+    protocol_before = int((clean[date_column_name("Data Protocolo")].dt.to_period("M") < EXPECTED_PERIOD_START).sum())
+    lines.extend(["", "## Possíveis interpretações e limites", "", "- Os resultados mostram como os registros administrativos publicados se distribuem por tempo, UF e protocolo. Não permitem explicar as causas das variações.", "- As mudanças mensais não devem ser interpretadas como evolução do emprego, do mercado de trabalho ou de demanda causal.", f"- `Data Protocolo` tem {protocol_before:,} registros anteriores ao período principal. Essa data histórica é distinta do mês de geração; as ocorrências foram preservadas e reportadas separadamente.", "- Totais e participações incluem todos os registros; apenas a comparação temporal principal usa 2020–2022. A UF é a do órgão emissor, não necessariamente a residência do titular."])
     (reports / "insights.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
