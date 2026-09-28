@@ -4,7 +4,7 @@ Este diretório ainda não contém um arquivo `.pbix`. Ele documenta o modelo pr
 
 No Desktop, crie o parâmetro de texto `CaminhoCSV` apontando para o CSV processado e importe `PowerQuery.m` como a consulta `ctps_emissoes`. As datas convertidas usam o dia 1 como representação técnica do mês, sem precisão diária. Crie cada medida de `medidas.dax` separadamente; formate a participação como percentual. Power Query e DAX foram revisados estaticamente e ainda precisam ser executados no Desktop.
 
-Sem filtros, os cartões devem mostrar 485.430 registros, 351.527 de primeira via e 133.903 de segunda via. A medida de perfis repetidos conta as linhas excedentes por combinação das 18 colunas de negócio, como o relatório Python: 25.844 sem filtros. `registro_id` é um hash de atributos, não uma chave única de atendimento.
+Sem filtros, os cartões devem mostrar 485.430 registros, 351.527 de primeira via e 133.903 de segunda via. A medida `Repeticoes de registros` conta as linhas excedentes após a primeira ocorrência de cada combinação das 18 colunas de negócio, como o relatório Python: 25.844 sem filtros. Não conta pessoas nem combinações únicas. `registro_id` é um hash de atributos, não uma chave única de atendimento.
 
 `ctps_emissoes` tem uma linha para cada registro publicado nos arquivos oficiais. O modelo não afirma que cada linha represente uma pessoa única.
 

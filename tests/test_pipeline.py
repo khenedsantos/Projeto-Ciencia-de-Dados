@@ -143,3 +143,16 @@ def test_manifest_validation_is_local_and_hash_based(workdir):
 def test_documented_period_bounds_are_explicit():
     assert str(EXPECTED_PERIOD_START) == "2020-01"
     assert str(EXPECTED_PERIOD_END) == "2022-12"
+
+
+@pytest.mark.parametrize("rows,expected", [(0, 0), (1, 0), (5, 3)])
+def test_sql_repetitions_count_excess_rows_and_include_dates(rows, expected):
+    raw = with_source(sample_frame(rows))
+    if rows > 1:
+        raw.loc[rows - 1, "Data CTPS Gerada"] = "2020-02"
+    sql = (Path(__file__).parents[1] / "sql/analises.sql").read_text(encoding="utf-8")
+    query = "\n".join(line for line in sql.splitlines() if not line.lstrip().startswith("--")).split(";")[-2]
+    with sqlite3.connect(":memory:") as connection:
+        raw.to_sql("ctps_emissoes", connection, index=False)
+        count = connection.execute(query).fetchone()[0]
+    assert count == raw.duplicated(subset=EXPECTED_COLUMNS).sum() == expected

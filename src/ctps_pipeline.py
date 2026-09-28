@@ -222,7 +222,7 @@ def make_outputs(clean: pd.DataFrame, output_dir: Path) -> None:
     lines = ["# Observações calculadas", "", "Os números abaixo foram gerados pelo pipeline. São achados descritivos do conjunto publicado; não evidenciam causalidade ou impacto.", "", "## Achados", ""]
     total = len(clean)
     lines.append(f"- Registros preservados: **{total:,}**.")
-    lines.append(f"- Registros com o mesmo perfil em todas as colunas de negócio: **{int(clean.duplicated(subset=EXPECTED_COLUMNS).sum()):,}**; eles foram preservados por falta de identificador de atendimento.")
+    lines.append(f"- Repetições de registros: **{int(clean.duplicated(subset=EXPECTED_COLUMNS).sum()):,}** linhas excedentes após a primeira ocorrência de cada combinação das 18 colunas de negócio. Todas foram preservadas; a contagem não representa pessoas nem combinações únicas.")
     if not by_state.empty:
         top_uf = by_state.iloc[0]
         top_five_share = by_state.head(5)["registros"].sum() / total

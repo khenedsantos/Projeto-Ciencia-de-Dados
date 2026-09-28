@@ -8,8 +8,8 @@ Segunda via = CALCULATE([Registros publicados], ctps_emissoes[Tipo Protocolo] = 
 
 Percentual primeira via = DIVIDE([Primeira via], [Registros publicados])
 
-Registros com perfil repetido =
-VAR Perfis = SUMMARIZE(
+Repeticoes de registros =
+VAR Combinacoes = SUMMARIZE(
     ctps_emissoes,
     ctps_emissoes[Tipo Protocolo], ctps_emissoes[Data Protocolo],
     ctps_emissoes[Tipo CTPS], ctps_emissoes[Data CTPS Gerada],
@@ -22,4 +22,4 @@ VAR Perfis = SUMMARIZE(
     ctps_emissoes[Nome Município Nascimento], ctps_emissoes[Sigla UF Nascimento],
     "Linhas", COUNTROWS(ctps_emissoes)
 )
-RETURN SUMX(FILTER(Perfis, [Linhas] > 1), [Linhas] - 1)
+RETURN COALESCE(SUMX(FILTER(Combinacoes, [Linhas] > 1), [Linhas] - 1), 0)

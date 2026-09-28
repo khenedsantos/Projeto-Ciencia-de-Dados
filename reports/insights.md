@@ -5,7 +5,7 @@ Os números abaixo foram gerados pelo pipeline. São achados descritivos do conj
 ## Achados
 
 - Registros preservados: **485,430**.
-- Registros com o mesmo perfil em todas as colunas de negócio: **25,844**; eles foram preservados por falta de identificador de atendimento.
+- Repetições de registros: **25,844** linhas excedentes após a primeira ocorrência de cada combinação das 18 colunas de negócio. Todas foram preservadas; a contagem não representa pessoas nem combinações únicas.
 - **Distribuição regional:** MG concentra **81,791** registros (16.8% do total). As cinco UFs com mais registros somam **299,077** linhas (61.6%).
 - **Tipo de protocolo:** 1ª Via é o tipo mais frequente, com **351,527** registros.
   - 1ª Via: **351,527** registros (72.4%).

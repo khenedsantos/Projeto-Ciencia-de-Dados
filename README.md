@@ -55,7 +55,7 @@ O código principal está em [`src/ctps_pipeline.py`](src/ctps_pipeline.py). As 
 
 ## Decisões metodológicas
 
-- **Registros repetidos:** linhas com o mesmo conjunto de atributos de negócio foram preservadas. A fonte não fornece um identificador de atendimento ou de pessoa que permita classificá-las como duplicatas indevidas.
+- **Repetições de registros:** 25.844 linhas excedentes após a primeira ocorrência de cada combinação das 18 colunas de negócio foram preservadas. Essa contagem não representa pessoas nem combinações únicas. A fonte não fornece um identificador de atendimento ou de pessoa que permita classificá-las como duplicatas indevidas.
 - **Registro `2023-01`:** o valor existe em `dados_ctps_2022.xlsx`, com protocolo e emissão em `2022-12`. Foi mantido para não alterar a fonte silenciosamente e está detalhado em [`reports/tables/emissoes_fora_intervalo.csv`](reports/tables/emissoes_fora_intervalo.csv).
 - **Datas de protocolo:** 15.017 protocolos são anteriores a 2020. Eles representam histórico do atendimento e não são usados para recortar a série principal, baseada em `Data CTPS Gerada`.
 - **Interpretação:** emissão de CTPS é um registro administrativo. Não mede contratação, desemprego, pessoas únicas ou causalidade econômica.

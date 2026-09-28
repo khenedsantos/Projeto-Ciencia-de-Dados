@@ -26,7 +26,7 @@ Esta é uma especificação para implementação posterior no Power BI Desktop. 
 
 **Objetivo:** explorar os atributos informados no atendimento sem tratar categorias como características de pessoas únicas.
 
-- **Cartões:** `[Registros publicados]`, `[Primeira via]`, `[Segunda via]` e `[Registros com perfil repetido]`.
+- **Cartões:** `[Registros publicados]`, `[Primeira via]`, `[Segunda via]` e `[Repeticoes de registros]`.
 - **Barras:** `Sexo`, `Nível Escolaridade`, `Raça e Cor`, `Estado Civil` e `Tipo Cidadania`, sempre com `[Registros publicados]`.
 - **Tabela agregada de contexto:** dimensões `Tipo CTPS` e `Descrição Nacionalidade`, com `[Registros publicados]`.
 - **Filtros:** `Tipo Protocolo`, `Sigla UF Órgão`, ano e mês.
