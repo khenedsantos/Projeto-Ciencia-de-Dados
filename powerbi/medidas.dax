@@ -1,0 +1,25 @@
+Registros publicados = COUNTROWS(ctps_emissoes)
+
+UFs com registros = DISTINCTCOUNT(ctps_emissoes[Sigla UF Órgão])
+
+Primeira via = CALCULATE([Registros publicados], ctps_emissoes[Tipo Protocolo] = "1ª Via")
+
+Segunda via = CALCULATE([Registros publicados], ctps_emissoes[Tipo Protocolo] = "2ª Via")
+
+Percentual primeira via = DIVIDE([Primeira via], [Registros publicados])
+
+Repeticoes de registros =
+VAR Combinacoes = SUMMARIZE(
+    ctps_emissoes,
+    ctps_emissoes[Tipo Protocolo], ctps_emissoes[Data Protocolo],
+    ctps_emissoes[Tipo CTPS], ctps_emissoes[Data CTPS Gerada],
+    ctps_emissoes[Nome Órgão], ctps_emissoes[Nome Município Órgão],
+    ctps_emissoes[Sigla UF Órgão], ctps_emissoes[Data Emissão],
+    ctps_emissoes[Sexo], ctps_emissoes[Nível Escolaridade],
+    ctps_emissoes[Raça e Cor], ctps_emissoes[Estado Civil],
+    ctps_emissoes[Data Nascimento], ctps_emissoes[Tipo Cidadania],
+    ctps_emissoes[Nome do País], ctps_emissoes[Descrição Nacionalidade],
+    ctps_emissoes[Nome Município Nascimento], ctps_emissoes[Sigla UF Nascimento],
+    "Linhas", COUNTROWS(ctps_emissoes)
+)
+RETURN COALESCE(SUMX(FILTER(Combinacoes, [Linhas] > 1), [Linhas] - 1), 0)

@@ -1,0 +1,32 @@
+[
+  {
+    "file": "dados_ctps_2020-jan.xlsx",
+    "url": "https://www.gov.br/trabalho-e-emprego/pt-br/servicos/trabalhador/carteira-de-trabalho/ctps-arquivos/dados_ctps_2020-jan.xlsx",
+    "bytes": 18107812,
+    "sha256": "382b2c6904bb872efacea921c99b18006d7dd3865ecdae27973c6152240c706a"
+  },
+  {
+    "file": "dados_ctps_2020-fev.xlsx",
+    "url": "https://www.gov.br/trabalho-e-emprego/pt-br/servicos/trabalhador/carteira-de-trabalho/ctps-arquivos/dados_ctps_2020-fev.xlsx",
+    "bytes": 12509731,
+    "sha256": "571fd35cf97b03b2b36b4f323221af3442c2dfd180c8f2a6a7654bf5a54e5e31"
+  },
+  {
+    "file": "dados_ctps_2020-mar-a-dez.xlsx",
+    "url": "https://www.gov.br/trabalho-e-emprego/pt-br/servicos/trabalhador/carteira-de-trabalho/ctps-arquivos/dados_ctps_2020-mar-a-dez.xlsx",
+    "bytes": 6969739,
+    "sha256": "1a0f667463831acd305d746b6dc5f91abab36897834468003f2a482f9e74b103"
+  },
+  {
+    "file": "dados_ctps_2021.xlsx",
+    "url": "https://www.gov.br/trabalho-e-emprego/pt-br/servicos/trabalhador/carteira-de-trabalho/ctps-arquivos/dados_ctps_2021.xlsx",
+    "bytes": 956239,
+    "sha256": "34741af4b26ee418e5491f86c24b4cc1784caa8c18405e2d36fe71660a250a02"
+  },
+  {
+    "file": "dados_ctps_2022.xlsx",
+    "url": "https://www.gov.br/trabalho-e-emprego/pt-br/servicos/trabalhador/carteira-de-trabalho/ctps-arquivos/dados_ctps_2022.xlsx",
+    "bytes": 269937,
+    "sha256": "e213ed16bfa2bddc11884ffe632ae7218452c5826e2de37800e7b57b42b5197c"
+  }
+]

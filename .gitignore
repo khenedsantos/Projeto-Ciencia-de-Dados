@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+pytest-cache-files-*/
+.ipynb_checkpoints/
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+/.pytest-local/
+!data/processed/.gitkeep
+*.db
+*.sqlite
+*.sqlite3
+*.log
+.DS_Store
+Thumbs.db
