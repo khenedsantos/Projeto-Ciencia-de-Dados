@@ -33,7 +33,7 @@ Volume, 1ª e 2ª via, participação de 1ª via, Top 10 UFs, evolução mensal 
 
 Escolaridade, sexo, raça/cor e cidadania.
 
-**Atenção ao contexto da captura:** esta página foi salva com **Ano = Todos**, mostrando **485.430**, inclusive o registro de 2023. Para reproduzir os números analíticos deste README, selecione 2020, 2021 e 2022 no Power BI. O PBIX e a captura foram preservados sem edição.
+A página está salva com **2020, 2021 e 2022 selecionados**, exibindo **485.429 registros**: 251.309 masculinos (51,77%) e 234.120 femininos (48,23%). O PBIX e a captura fornecidos pelo autor foram copiados sem edição e estão alinhados ao recorte analítico deste README.
 
 ![Perfil dos Registros — dashboard CTPS](powerbi/02_perfil_registros.png)
 

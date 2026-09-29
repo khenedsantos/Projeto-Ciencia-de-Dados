@@ -27,4 +27,4 @@ Os números abaixo foram gerados pelo pipeline. São achados descritivos do conj
 - As mudanças mensais não devem ser interpretadas como evolução do emprego, do mercado de trabalho ou de demanda causal.
 - `Data Protocolo` tem 15,017 registros anteriores ao período principal. Essa data histórica é distinta do mês de geração; as ocorrências foram preservadas e reportadas separadamente.
 - A UF é a do órgão emissor, não necessariamente a residência do titular. A categoria IG é mantida sem atribuição de significado.
-- A captura da página Perfil dos Registros do PBIX usa Ano = Todos (485.430). As tabelas deste relatório usam 2020–2022 (485.429). Consulte a [reconciliação do dashboard](../powerbi/dashboard_spec.md).
+- As capturas de Visão Geral e Perfil dos Registros usam 2020–2022 (485.429), em concordância com estas tabelas. O controle de qualidade mantém a base completa de 485.430. Consulte a [documentação do dashboard](../powerbi/dashboard_spec.md).

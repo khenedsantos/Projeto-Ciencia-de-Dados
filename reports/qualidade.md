@@ -43,7 +43,7 @@ Os órgãos informados são `AA/DF - Gama - Gama` (5), `AA/DF - Ceilândia - Cei
 
 ## Contexto das capturas
 
-Visão Geral mostra 485.429 registros em 2020–2022; Perfil dos Registros foi salvo com Ano = Todos e mostra 485.430. Esta diferença de seleção está [reconciliada por indicador](../powerbi/dashboard_spec.md). Os números analíticos do README usam o recorte, e o total de qualidade usa a base completa.
+Visão Geral e Perfil dos Registros estão salvos com 2020, 2021 e 2022 selecionados e mostram 485.429 registros. A captura de Perfil confirma 251.309 masculinos (51,77%) e 234.120 femininos (48,23%). Os números analíticos do dashboard, README, SQL e tabelas usam o mesmo recorte; o controle de qualidade mantém a base completa de 485.430, incluindo o registro oficial de janeiro de 2023. Veja a [reconciliação por indicador](../powerbi/dashboard_spec.md).
 
 ## Limites
 
