@@ -1,6 +1,9 @@
+// Medidas de apoio: fórmulas verificadas estaticamente, não exportadas do PBIX.
+// Registros publicados respeita o contexto atual; sem filtro inclui janeiro de 2023.
 Registros publicados = COUNTROWS(ctps_emissoes)
 
-UFs com registros = DISTINCTCOUNT(ctps_emissoes[Sigla UF Órgão])
+// IG conta como categoria da fonte, não como uma 28ª unidade federativa.
+Categorias UF com registros = DISTINCTCOUNT(ctps_emissoes[Sigla UF Órgão])
 
 Primeira via = CALCULATE([Registros publicados], ctps_emissoes[Tipo Protocolo] = "1ª Via")
 
@@ -8,6 +11,26 @@ Segunda via = CALCULATE([Registros publicados], ctps_emissoes[Tipo Protocolo] = 
 
 Percentual primeira via = DIVIDE([Primeira via], [Registros publicados])
 
+// Alternativas explícitas para análises com recorte fixo, preservando os slicers.
+Registros 2020-2022 =
+CALCULATE(
+    [Registros publicados],
+    KEEPFILTERS(ctps_emissoes[data_ctps_gerada_date] >= DATE(2020, 1, 1)),
+    KEEPFILTERS(ctps_emissoes[data_ctps_gerada_date] < DATE(2023, 1, 1))
+)
+
+Primeira via 2020-2022 =
+CALCULATE([Registros 2020-2022], KEEPFILTERS(ctps_emissoes[Tipo Protocolo] = "1ª Via"))
+
+Segunda via 2020-2022 =
+CALCULATE([Registros 2020-2022], KEEPFILTERS(ctps_emissoes[Tipo Protocolo] = "2ª Via"))
+
+Percentual primeira via 2020-2022 =
+DIVIDE([Primeira via 2020-2022], [Registros 2020-2022])
+
+// Base completa sem filtros: 25.844. Com filtros, recalcula no contexto selecionado.
+// As 18 colunas de negócio são texto original com espaços das extremidades removidos.
+// Não usar registro_id nem arquivo_fonte para este agrupamento.
 Repeticoes de registros =
 VAR Combinacoes = SUMMARIZE(
     ctps_emissoes,
